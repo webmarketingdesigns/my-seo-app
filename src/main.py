@@ -8,9 +8,15 @@ from models import db, Transaction, MONTHLY_CREDITS
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
 
-# Use /data on Render (persistent disk), fall back to local for dev
-db_dir = '/data' if os.path.isdir('/data') else os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'credits.db')
+# Use PostgreSQL on Render (DATABASE_URL), SQLite locally
+database_url = os.environ.get('DATABASE_URL', '')
+if database_url.startswith('postgres://'):
+    # SQLAlchemy requires postgresql:// not postgres://
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+if not database_url:
+    db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'credits.db'))
+    database_url = 'sqlite:///' + db_path
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-for-credits-app')
 
