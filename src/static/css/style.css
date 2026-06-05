@@ -262,3 +262,36 @@ main {
 .remaining.danger { color: #c0392b; }
 .credit-bar.warn { background: #e67e22; }
 .credit-bar.danger { background: #c0392b; }
+
+/* ── Mobile / Senior-friendly overrides ── */
+@media (max-width: 700px) {
+  body { font-size: 20px; }
+
+  header h1 { font-size: 1.5rem; }
+  .month-label { font-size: 1.2rem; min-width: 0; }
+  .nav-btn { padding: 10px 14px; font-size: 1rem; }
+
+  .card { padding: 20px 16px; }
+  .card-name { font-size: 1.8rem; }
+  .remaining { font-size: 2.8rem; }
+
+  .txn-item { flex-wrap: wrap; gap: 6px; padding: 12px 12px; }
+  .txn-who { width: auto; }
+  .txn-date { width: auto; }
+  .txn-desc { width: 100%; order: 3; }
+  .txn-amount { margin-left: auto; }
+
+  .form-row { flex-direction: column; }
+  .form-row label { min-width: 0; }
+  .form-row select,
+  .form-row input { font-size: 1.2rem; padding: 14px 12px; }
+
+  .submit-btn { width: 100%; padding: 18px; font-size: 1.2rem; }
+
+  .txn-delete { padding: 8px 16px; font-size: 1rem; }
+}
+
+/* Safe area for notched phones (iPhone X+) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  main { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+}

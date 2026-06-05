@@ -1,7 +1,7 @@
 import os
 import calendar
 from datetime import datetime, date
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_from_directory
 from flask_cors import CORS
 from models import db, Transaction, MONTHLY_CREDITS
 
@@ -22,6 +22,15 @@ with app.app_context():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/static/sw.js')
+def service_worker():
+    # Must be served from root scope, not /static/
+    response = send_from_directory(app.static_folder, 'sw.js')
+    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 
 @app.route('/api/summary/<year_month>')
