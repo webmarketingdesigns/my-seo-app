@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Karen & Wally – Credit Tracker</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🍽️ Karen &amp; Wally's Credit Tracker</h1>
+    <div class="month-nav">
+      <button id="prevMonth" class="nav-btn">&#8592; Prev</button>
+      <span id="monthLabel" class="month-label"></span>
+      <button id="nextMonth" class="nav-btn">Next &#8594;</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Summary Cards -->
+    <section class="cards">
+      <div class="card karen">
+        <div class="card-name">Karen</div>
+        <div class="credit-bar-wrap">
+          <div class="credit-bar" id="karenBar"></div>
+        </div>
+        <div class="credit-numbers">
+          <span class="remaining" id="karenRemaining">—</span>
+          <span class="label">credits left</span>
+        </div>
+        <div class="spent-line">Spent: <span id="karenSpent">—</span> / 350</div>
+      </div>
+
+      <div class="card wally">
+        <div class="card-name">Wally</div>
+        <div class="credit-bar-wrap">
+          <div class="credit-bar" id="wallyBar"></div>
+        </div>
+        <div class="credit-numbers">
+          <span class="remaining" id="wallyRemaining">—</span>
+          <span class="label">credits left</span>
+        </div>
+        <div class="spent-line">Spent: <span id="wallySpent">—</span> / 350</div>
+      </div>
+    </section>
+
+    <!-- Month info -->
+    <div class="month-info" id="monthInfo"></div>
+
+    <!-- Add Transaction -->
+    <section class="add-section" id="addSection">
+      <h2>Add a Purchase</h2>
+      <form id="addForm">
+        <div class="form-row">
+          <label>Who?
+            <select id="personSelect">
+              <option value="karen">Karen</option>
+              <option value="wally">Wally</option>
+            </select>
+          </label>
+          <label>Date
+            <input type="date" id="txnDate" />
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Credits Spent
+            <input type="number" id="txnAmount" min="0.1" step="0.5" placeholder="e.g. 12.50" />
+          </label>
+          <label>Description
+            <input type="text" id="txnDesc" placeholder="e.g. Dinner – grilled salmon" maxlength="200" />
+          </label>
+        </div>
+        <button type="submit" class="submit-btn">Add Purchase</button>
+        <div class="form-msg" id="formMsg"></div>
+      </form>
+    </section>
+
+    <!-- Transaction Log -->
+    <section class="log-section">
+      <h2>This Month's Purchases</h2>
+      <div id="txnList" class="txn-list">
+        <p class="empty-msg">Loading…</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
