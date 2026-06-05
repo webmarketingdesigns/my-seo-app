@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: my-credit-app
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    plan: free
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    disk:
+      name: credits-data
+      mountPath: /data
+      sizeGB: 1
