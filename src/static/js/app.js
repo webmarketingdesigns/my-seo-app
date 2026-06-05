@@ -113,14 +113,17 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   msg.className = 'form-msg';
   msg.textContent = '';
 
+  const activity = document.getElementById('activitySelect').value;
+  const notes = document.getElementById('txnDesc').value.trim();
+  const description = notes ? `${activity} – ${notes}` : activity;
+
   const body = {
     person: document.getElementById('personSelect').value,
     amount: parseFloat(document.getElementById('txnAmount').value),
-    description: document.getElementById('txnDesc').value.trim(),
+    description,
     date: document.getElementById('txnDate').value,
   };
 
-  if (!body.description) { showMsg('Please enter a description.', 'error'); return; }
   if (!body.amount || body.amount <= 0) { showMsg('Please enter a valid credit amount.', 'error'); return; }
 
   try {

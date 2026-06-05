@@ -73,11 +73,21 @@
           </label>
         </div>
         <div class="form-row">
+          <label>Activity
+            <select id="activitySelect">
+              <option value="Breakfast">Breakfast</option>
+              <option value="Lunch">Lunch</option>
+              <option value="Dinner">Dinner</option>
+              <option value="Visitor">Visitor</option>
+            </select>
+          </label>
+          <label>Description <span class="optional">(optional notes)</span>
+            <input type="text" id="txnDesc" placeholder="e.g. grilled salmon" maxlength="200" />
+          </label>
+        </div>
+        <div class="form-row">
           <label>Credits Spent
             <input type="number" id="txnAmount" min="0.1" step="0.5" placeholder="e.g. 12.50" />
-          </label>
-          <label>Description
-            <input type="text" id="txnDesc" placeholder="e.g. Dinner – grilled salmon" maxlength="200" />
           </label>
         </div>
         <button type="submit" class="submit-btn">Add Purchase</button>

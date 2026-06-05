@@ -185,6 +185,8 @@ main {
 .form-row select:focus,
 .form-row input:focus { border-color: #2980b9; }
 
+.optional { font-size: .8rem; color: #999; font-weight: normal; }
+
 .submit-btn {
   background: #27ae60;
   color: #fff;
