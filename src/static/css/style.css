@@ -59,6 +59,44 @@ header h1 {
 }
 .nav-btn:hover { background: rgba(255,255,255,.35); }
 
+/* ── Hero Banner ── */
+.hero-banner {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 60%);
+  display: flex;
+  align-items: flex-end;
+  padding: 18px 24px;
+}
+
+.hero-text {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  letter-spacing: .5px;
+}
+
+@media (max-width: 600px) {
+  .hero-banner { height: 160px; }
+  .hero-text { font-size: 1.2rem; }
+}
+
 /* ── Main ── */
 main {
   max-width: 860px;
