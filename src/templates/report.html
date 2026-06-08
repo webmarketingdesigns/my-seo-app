@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monthly Report – Karen &amp; Wally</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/report.css" />
+</head>
+<body>
+  <header>
+    <h1>📊 Monthly Credit Report</h1>
+    <div class="report-nav">
+      <a href="/" class="nav-btn">&#8592; Back</a>
+      <div class="month-nav">
+        <button id="prevMonth" class="nav-btn">&#8592; Prev</button>
+        <span id="monthLabel" class="month-label"></span>
+        <button id="nextMonth" class="nav-btn">Next &#8594;</button>
+      </div>
+      <button onclick="window.print()" class="print-btn">🖨️ Print</button>
+    </div>
+  </header>
+
+  <main id="reportBody">
+    <p class="empty-msg">Loading report…</p>
+  </main>
+
+  <script>
+    const today = new Date();
+    let year = today.getFullYear();
+    let month = today.getMonth() + 1;
+
+    function ym() {
+      return `${year}-${String(month).padStart(2, '0')}`;
+    }
+
+    function formatDate(iso) {
+      const [y, m, d] = iso.split('-');
+      return new Date(Number(y), Number(m) - 1, Number(d))
+        .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function bar(pct) {
+      const color = pct <= 15 ? '#c0392b' : pct <= 30 ? '#e67e22' : '#27ae60';
+      return `<div class="rpt-bar-wrap"><div class="rpt-bar" style="width:${Math.max(0,pct)}%;background:${color}"></div></div>`;
+    }
+
+    async function loadReport() {
+      const res = await fetch(`/api/report/${ym()}`);
+      const data = await res.json();
+      document.getElementById('monthLabel').textContent = data.month_name;
+
+      const people = ['karen', 'wally'];
+      let html = `<h2 class="report-month">${data.month_name}</h2>`;
+
+      for (const person of people) {
+        const d = data.people[person];
+        const pct = Math.round((d.remaining / d.total_credits) * 100);
+        const name = person.charAt(0).toUpperCase() + person.slice(1);
+
+        // Activity breakdown rows
+        const actRows = Object.entries(d.by_activity).map(([act, amt]) =>
+          `<tr><td>${act}</td><td class="amt">${amt.toFixed(2)}</td></tr>`
+        ).join('') || '<tr><td colspan="2" class="no-data">No purchases</td></tr>';
+
+        // Transaction rows
+        const txnRows = d.transactions.map(t =>
+          `<tr>
+            <td>${formatDate(t.date)}</td>
+            <td>${escHtml(t.description)}</td>
+            <td class="amt">${Number(t.amount).toFixed(2)}</td>
+          </tr>`
+        ).join('') || '<tr><td colspan="3" class="no-data">No purchases this month</td></tr>';
+
+        html += `
+          <section class="rpt-person ${person}">
+            <div class="rpt-header">
+              <span class="rpt-name">${name}</span>
+              <span class="rpt-summary">${d.spent.toFixed(2)} spent &nbsp;|&nbsp; <strong>${d.remaining.toFixed(2)} remaining</strong> of 350</span>
+            </div>
+            ${bar(pct)}
+
+            <div class="rpt-tables">
+              <div class="rpt-table-wrap">
+                <h3>By Activity</h3>
+                <table class="rpt-table">
+                  <thead><tr><th>Activity</th><th>Credits</th></tr></thead>
+                  <tbody>${actRows}</tbody>
+                  <tfoot><tr><td><strong>Total Spent</strong></td><td class="amt"><strong>${d.spent.toFixed(2)}</strong></td></tr>
+                         <tr class="remaining-row"><td><strong>Remaining</strong></td><td class="amt"><strong>${d.remaining.toFixed(2)}</strong></td></tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div class="rpt-table-wrap">
+                <h3>All Purchases</h3>
+                <table class="rpt-table">
+                  <thead><tr><th>Date</th><th>Description</th><th>Credits</th></tr></thead>
+                  <tbody>${txnRows}</tbody>
+                </table>
+              </div>
+            </div>
+          </section>`;
+      }
+
+      document.getElementById('reportBody').innerHTML = html;
+    }
+
+    document.getElementById('prevMonth').addEventListener('click', () => {
+      month--; if (month < 1) { month = 12; year--; }
+      loadReport();
+    });
+    document.getElementById('nextMonth').addEventListener('click', () => {
+      if (year === today.getFullYear() && month === today.getMonth() + 1) return;
+      month++; if (month > 12) { month = 1; year++; }
+      loadReport();
+    });
+
+    loadReport();
+  </script>
+</body>
+</html>

@@ -97,7 +97,47 @@ def get_transactions(year_month):
     return jsonify([t.to_dict() for t in txns])
 
 
-@app.route('/api/transactions', methods=['POST'])
+@app.route('/report')
+def report():
+    return render_template('report.html')
+
+
+@app.route('/api/report/<year_month>')
+def report_data(year_month):
+    try:
+        year, month = map(int, year_month.split('-'))
+        first_day = date(year, month, 1)
+        days_in_month = calendar.monthrange(year, month)[1]
+        last_day = date(year, month, days_in_month)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid month format, use YYYY-MM'}), 400
+
+    result = {'month_name': first_day.strftime('%B %Y'), 'year': year, 'month': month, 'people': {}}
+
+    for person in ('karen', 'wally'):
+        txns = Transaction.query.filter(
+            Transaction.person == person,
+            Transaction.date >= first_day,
+            Transaction.date <= last_day,
+        ).order_by(Transaction.date.asc(), Transaction.created_at.asc()).all()
+
+        spent = sum(t.amount for t in txns)
+        by_activity = {}
+        for t in txns:
+            activity = t.description.split(' – ')[0] if ' – ' in t.description else t.description
+            by_activity[activity] = round(by_activity.get(activity, 0) + t.amount, 2)
+
+        result['people'][person] = {
+            'total_credits': MONTHLY_CREDITS,
+            'spent': round(spent, 2),
+            'remaining': round(MONTHLY_CREDITS - spent, 2),
+            'by_activity': by_activity,
+            'transactions': [t.to_dict() for t in txns],
+        }
+
+    return jsonify(result)
+
+
 def add_transaction():
     data = request.get_json()
     person = (data.get('person') or '').lower().strip()
