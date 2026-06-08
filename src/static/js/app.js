@@ -137,14 +137,17 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   const notes = document.getElementById('txnDesc').value.trim();
   const description = notes ? `${activity} – ${notes}` : activity;
 
+  const rawAmount = document.getElementById('txnAmount').value;
+  const amount = parseFloat(rawAmount);
+  if (!rawAmount || isNaN(amount) || amount <= 0) { showMsg('Please enter a valid credit amount.', 'error'); return; }
+  if (!/^\d+\.\d{2}$/.test(rawAmount)) { showMsg('Amount must have exactly 2 decimal places (e.g. 12.50).', 'error'); return; }
+
   const body = {
     person: document.getElementById('personSelect').value,
-    amount: parseFloat(document.getElementById('txnAmount').value),
+    amount,
     description,
     date: document.getElementById('txnDate').value,
   };
-
-  if (!body.amount || body.amount <= 0) { showMsg('Please enter a valid credit amount.', 'error'); return; }
 
   try {
     const res = await fetch('/api/transactions', {
