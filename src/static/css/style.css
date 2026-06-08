@@ -210,6 +210,45 @@ main {
 .form-msg.error { color: #c0392b; }
 
 /* ── Transaction Log ── */
+.log-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.log-header h2 { margin-bottom: 0; }
+
+.filters { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+
+.filter-group { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+.filter-btn {
+  background: #f0f0f0;
+  border: 2px solid #ddd;
+  color: #555;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.filter-btn:hover { border-color: #aaa; color: #333; }
+.filter-btn.active {
+  background: #2c3e50;
+  border-color: #2c3e50;
+  color: #fff;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .log-header { flex-direction: column; }
+  .filters { align-items: flex-start; }
+  .filter-group { justify-content: flex-start; }
+}
+
 .log-section {
   background: var(--card-bg);
   border-radius: var(--radius);

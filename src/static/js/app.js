@@ -2,6 +2,9 @@
 const today = new Date();
 let currentYear = today.getFullYear();
 let currentMonth = today.getMonth() + 1; // 1-based
+let allTransactions = [];
+let activePerson = 'all';
+let activeActivity = 'all';
 
 const todayStr = today.toISOString().split('T')[0];
 document.getElementById('txnDate').value = todayStr;
@@ -81,13 +84,30 @@ function renderSummary(s) {
 }
 
 function renderTransactions(txns) {
+  allTransactions = txns;
+  applyFilters();
+}
+
+function applyFilters() {
   const list = document.getElementById('txnList');
-  if (!txns.length) {
-    list.innerHTML = '<p class="empty-msg">No purchases recorded yet.</p>';
+  const filtered = allTransactions.filter(t => {
+    if (activePerson !== 'all' && t.person !== activePerson) return false;
+    if (activeActivity !== 'all') {
+      const activity = t.description.split(' – ')[0];
+      if (activity !== activeActivity) return false;
+    }
+    return true;
+  });
+
+  if (!filtered.length) {
+    const msg = allTransactions.length
+      ? 'No purchases match the selected filters.'
+      : 'No purchases recorded yet.';
+    list.innerHTML = `<p class="empty-msg">${msg}</p>`;
     return;
   }
 
-  list.innerHTML = txns.map(t => `
+  list.innerHTML = filtered.map(t => `
     <div class="txn-item ${t.person}">
       <span class="txn-who">${t.person.charAt(0).toUpperCase() + t.person.slice(1)}</span>
       <span class="txn-date">${formatDate(t.date)}</span>
@@ -176,6 +196,18 @@ document.getElementById('nextMonth').addEventListener('click', () => {
   currentMonth += 1;
   if (currentMonth > 12) { currentMonth = 1; currentYear += 1; }
   loadAll();
+});
+
+/* ── Filters ── */
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.dataset.filter;
+    document.querySelectorAll(`.filter-btn[data-filter="${group}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (group === 'person') activePerson = btn.dataset.value;
+    if (group === 'activity') activeActivity = btn.dataset.value;
+    applyFilters();
+  });
 });
 
 /* ── Init ── */

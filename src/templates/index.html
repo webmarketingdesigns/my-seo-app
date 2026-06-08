@@ -97,7 +97,22 @@
 
     <!-- Transaction Log -->
     <section class="log-section">
-      <h2>This Month's Purchases</h2>
+      <div class="log-header">
+        <h2>This Month's Purchases</h2>
+        <div class="filters">
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="person" data-value="all">Everyone</button>
+            <button class="filter-btn" data-filter="person" data-value="karen">Karen</button>
+            <button class="filter-btn" data-filter="person" data-value="wally">Wally</button>
+          </div>
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="activity" data-value="all">All Activities</button>
+            <button class="filter-btn" data-filter="activity" data-value="Breakfast">Breakfast</button>
+            <button class="filter-btn" data-filter="activity" data-value="Lunch">Lunch</button>
+            <button class="filter-btn" data-filter="activity" data-value="Dinner">Dinner</button>
+          </div>
+        </div>
+      </div>
       <div id="txnList" class="txn-list">
         <p class="empty-msg">Loading…</p>
       </div>
