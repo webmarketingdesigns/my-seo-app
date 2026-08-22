@@ -4,7 +4,8 @@ services:
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
-    plan: free
+    # Paid tier: the free plan spins down after 15 minutes idle.
+    plan: starter
     envVars:
       - key: SECRET_KEY
         generateValue: true
@@ -16,5 +17,8 @@ services:
           property: connectionString
 
 databases:
+  # NOT the free plan: free Postgres expires 30 days after creation and is then
+  # deleted along with its data. That is exactly what happened to the original
+  # credits-db, which took the credit history with it.
   - name: credits-db
-    plan: free
+    plan: basic-256mb
