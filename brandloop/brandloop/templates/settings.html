@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block title %}Settings · BrandLoop{% endblock %}
+{% block heading %}Settings{% endblock %}
+{% block subheading %}The tracked query, the sources it runs against, and the brand voice used for writing.{% endblock %}
+
+{% block content %}
+{% if not brand %}
+  <section class="card narrow"><p class="empty">No brand yet. <a href="/">Create one</a>.</p></section>
+{% else %}
+<div class="grid halves">
+  <section class="card">
+    <header><h2>Brand</h2></header>
+    <form id="brand-form" class="stack">
+      <label>Name<input name="name" value="{{ brand.name }}" required></label>
+      <label>Website<input name="website" value="{{ brand.website }}" placeholder="https://example.com"></label>
+      <label>What they do<textarea name="description" rows="3">{{ brand.description }}</textarea></label>
+      <div class="row">
+        <button class="primary" type="submit">Save</button>
+        <button class="ghost" type="button" id="analyse-site">Re-read website for voice</button>
+      </div>
+    </form>
+
+    <header class="mt"><h2>Voice profile</h2></header>
+    {% if brand.voice %}
+    <div class="stack">
+      <div class="spread"><span class="tiny muted">Tone</span><span class="tiny">{{ brand.voice.get('tone', '—') }}</span></div>
+      <div class="spread"><span class="tiny muted">Audience</span><span class="tiny">{{ brand.voice.get('audience', '—') }}</span></div>
+      <div class="spread"><span class="tiny muted">Derived from</span><span class="tiny">{{ brand.voice.get('source', '—') }}</span></div>
+      {% if brand.voice.get('error') %}<p class="tiny" style="color:var(--neg)">{{ brand.voice.error }}</p>{% endif %}
+      <div class="topiclist">
+        {% for p in brand.voice.get('pillars', []) %}<span class="topic">{{ p }}</span>{% endfor %}
+      </div>
+    </div>
+    {% else %}
+      <p class="empty">No voice profile yet. Add a website and re-read it.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <header><h2>Tracked terms</h2><span class="tiny muted">the boolean query</span></header>
+    <form id="keyword-form" class="filters">
+      <label>Term<input name="term" required placeholder="social listening"></label>
+      <label>Type
+        <select name="kind">
+          <option value="include">Include</option>
+          <option value="competitor">Competitor</option>
+          <option value="exclude">Exclude</option>
+        </select>
+      </label>
+      <button class="primary" type="submit">Add</button>
+    </form>
+
+    <table class="mt">
+      <tbody>
+        {% for k in brand.keywords %}
+        <tr>
+          <td><span class="pill {{ 'accent' if k.kind == 'include' else 'neg' if k.kind == 'exclude' }}">{{ k.kind }}</span></td>
+          <td>{{ k.term }}</td>
+          <td class="num"><button class="small ghost danger" data-del-keyword="{{ k.id }}">Remove</button></td>
+        </tr>
+        {% else %}<tr><td class="empty">No terms yet — nothing will match.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    <p class="tiny muted mt">
+      A mention matches if it contains any <b>include</b> term and no <b>exclude</b> term.
+      <b>Competitor</b> terms are tracked separately and drive share of voice.
+    </p>
+  </section>
+</div>
+
+<section class="card mt">
+  <header><h2>Sources</h2><span class="tiny muted">free and key-less: RSS/Atom, Hacker News, Reddit</span></header>
+  <form id="source-form" class="filters">
+    <label>Type
+      <select name="kind">
+        {% for k in source_kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+      </select>
+    </label>
+    <label style="flex:1">Feed URL or search query
+      <input name="config" required placeholder="https://example.com/feed  ·  or:  social listening">
+    </label>
+    <label>Label<input name="label" placeholder="optional"></label>
+    <button class="primary" type="submit">Add source</button>
+  </form>
+
+  <div class="scroll-x mt">
+    <table>
+      <thead><tr><th>Source</th><th>Query / URL</th><th>Last run</th><th>Result</th><th></th></tr></thead>
+      <tbody>
+        {% for s in brand.sources %}
+        <tr>
+          <td><span class="pill">{{ s.kind }}</span> {{ s.label }}</td>
+          <td class="tiny mono">{{ s.config[:70] }}</td>
+          <td class="tiny muted">{{ s.last_run_at|ago if s.last_run_at else 'never' }}</td>
+          <td class="tiny muted">{{ s.last_result or '—' }}</td>
+          <td class="num"><button class="small ghost danger" data-del-source="{{ s.id }}">Remove</button></td>
+        </tr>
+        {% else %}<tr><td colspan="5" class="empty">No sources configured.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="row mt">
+    <button class="primary" data-action="ingest">Run ingestion now</button>
+    <button class="ghost" data-action="seed">Add 30 days of demo data</button>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if brand %}
+<script>
+document.getElementById('brand-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  if (await api('/api/brands/{{ brand.id }}', 'PATCH', body)) toast('Brand saved');
+});
+
+document.getElementById('analyse-site').addEventListener('click', async (e) => {
+  const original = e.target.textContent;
+  e.target.disabled = true; e.target.textContent = 'Reading…';
+  const result = await api('/api/brands/{{ brand.id }}/analyse-site', 'POST');
+  e.target.disabled = false; e.target.textContent = original;
+  if (result) {
+    toast(result.voice.error || `Voice updated: ${result.voice.tone}`, Boolean(result.voice.error));
+    if (!result.voice.error) setTimeout(() => location.reload(), 900);
+  }
+});
+
+document.getElementById('keyword-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  if (await api('/api/keywords', 'POST', body)) location.reload();
+});
+
+document.getElementById('source-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  if (await api('/api/sources', 'POST', body)) location.reload();
+});
+
+document.addEventListener('click', async (e) => {
+  const keyword = e.target.closest('[data-del-keyword]');
+  if (keyword && await api(`/api/keywords/${keyword.dataset.delKeyword}`, 'DELETE')) location.reload();
+  const source = e.target.closest('[data-del-source]');
+  if (source && await api(`/api/sources/${source.dataset.delSource}`, 'DELETE')) location.reload();
+});
+</script>
+{% endif %}
+{% endblock %}

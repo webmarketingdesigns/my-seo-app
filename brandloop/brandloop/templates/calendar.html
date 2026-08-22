@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Calendar · BrandLoop{% endblock %}
+{% block heading %}Calendar{% endblock %}
+{% block subheading %}{{ total }} post(s) scheduled or published over the next four weeks.{% endblock %}
+{% block actions %}<button class="primary" data-action="run-scheduler">Publish what is due</button>{% endblock %}
+
+{% block content %}
+<section class="card">
+  <div class="cal">
+    {% for label in ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun') %}
+    <div class="dow">{{ label }}</div>
+    {% endfor %}
+    {% for week in weeks %}{% for day in week %}
+    <div class="day {{ 'today' if day.is_today }}">
+      <span class="n">{{ day.date.strftime('%-d %b') }}</span>
+      {% for post in day.posts %}
+      <span class="chip {{ 'done' if post.status == 'published' }}"
+            title="{{ CHANNELS[post.channel].label if post.channel in CHANNELS else post.channel }} · {{ post.status }} · {{ post.body[:120] }}">
+        {{ post.scheduled_for.strftime('%H:%M') }} {{ CHANNELS[post.channel].label if post.channel in CHANNELS else post.channel }}
+      </span>
+      {% endfor %}
+    </div>
+    {% endfor %}{% endfor %}
+  </div>
+  <p class="tiny muted mt">
+    Blue = scheduled, green = published. Publishing runs through the dry-run adapter until real
+    channel credentials are configured.
+  </p>
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block heading %}Welcome to BrandLoop{% endblock %}
+{% block subheading %}Create a brand to start listening.{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h2>Set up your first brand</h2>
+  <p class="muted">BrandLoop tracks what people say about a brand, finds what is trending, and turns
+  that into scheduled posts. It needs a brand and at least one tracked term to begin.</p>
+  <form id="brand-form" class="stack">
+    <label>Brand name<input name="name" required placeholder="Northwind Analytics"></label>
+    <label>Website<input name="website" placeholder="https://example.com"></label>
+    <label>What they do<textarea name="description" rows="3"
+      placeholder="Consumer intelligence for marketing teams"></textarea></label>
+    <button class="primary" type="submit">Create brand</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('brand-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  const res = await api('/api/brands', 'POST', body);
+  if (res) location.href = '/?brand=' + res.id;
+});
+</script>
+{% endblock %}
