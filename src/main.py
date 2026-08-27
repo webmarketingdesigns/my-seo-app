@@ -97,6 +97,11 @@ def get_transactions(year_month):
     return jsonify([t.to_dict() for t in txns])
 
 
+@app.route('/heloc')
+def heloc_calculator():
+    return render_template('heloc.html')
+
+
 @app.route('/report')
 def report():
     return render_template('report.html')

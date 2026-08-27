@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1st Lien HELOC Calculator</title>
+  <meta name="description" content="See what a 1st lien HELOC (all-in-one loan) would really cost compared with keeping your mortgage — including the fair comparison most sales pitches leave out." />
+  <meta name="theme-color" content="#2c3e50" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/heloc.css" />
+</head>
+<body class="heloc-page">
+  <header>
+    <h1>🏠 1st Lien HELOC Calculator</h1>
+    <p class="subhead">Compare an all-in-one loan against simply keeping your mortgage — with the honest, apples-to-apples math.</p>
+  </header>
+
+  <main>
+    <!-- ── Explainer ── -->
+    <section class="explainer">
+      <h2>What a 1st lien HELOC actually is</h2>
+      <p>
+        A <strong>1st lien HELOC</strong> (also sold as an <em>all-in-one loan</em> or <em>offset mortgage</em>)
+        replaces your mortgage entirely with a large line of credit secured by your home. It works in three moves:
+      </p>
+      <ol class="steps">
+        <li><strong>Draw once to pay off the mortgage.</strong> Day one, you borrow your full mortgage balance from the line. The mortgage is gone; the line is now the loan.</li>
+        <li><strong>Every paycheck goes into the line.</strong> Your deposit lands against the balance immediately, so you owe less starting that day.</li>
+        <li><strong>You live off the line.</strong> Bills and spending are drawn back out during the month. Interest is charged on the <strong>average daily balance</strong>, so money you haven't spent yet is quietly cutting your interest while it sits there.</li>
+      </ol>
+      <p class="callout">
+        The catch: the rate is <strong>variable</strong> and usually higher than a fixed mortgage, and there are
+        two very different reasons the balance falls fast. Most of the speed comes from the surplus money you're
+        putting in — which would pay down a regular mortgage just as fast. Only the leftover "float" advantage is
+        unique to the HELOC. <strong>This calculator separates the two.</strong>
+      </p>
+    </section>
+
+    <!-- ── Inputs ── -->
+    <form id="helocForm" autocomplete="off">
+      <section class="input-group">
+        <h2>1. Your current mortgage</h2>
+        <div class="fields">
+          <label>Balance owed
+            <input type="number" id="mortgageBalance" value="350000" min="0" step="1000" />
+            <span class="hint">What you still owe today, not the purchase price.</span>
+          </label>
+          <label>Interest rate
+            <span class="input-suffix"><input type="number" id="mortgageRate" value="6.5" min="0" max="25" step="0.01" /><i>%</i></span>
+            <span class="hint">Your fixed rate. It can't change — that's worth something.</span>
+          </label>
+          <label>Years left
+            <input type="number" id="mortgageYears" value="27" min="1" max="40" step="1" />
+            <span class="hint">Years remaining, not the original 30.</span>
+          </label>
+          <label>Monthly payment <span class="optional">(optional)</span>
+            <input type="number" id="mortgagePayment" placeholder="calculated" min="0" step="10" />
+            <span class="hint">Principal &amp; interest only — leave blank and we'll compute it. Skip taxes and insurance; you'll pay those either way.</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="input-group">
+        <h2>2. The HELOC offer</h2>
+        <div class="fields">
+          <label>Credit limit
+            <input type="number" id="helocLimit" value="400000" min="0" step="1000" />
+            <span class="hint">Must be big enough to swallow the whole mortgage — plus room for emergencies.</span>
+          </label>
+          <label>Interest rate
+            <span class="input-suffix"><input type="number" id="helocRate" value="7.75" min="0" max="25" step="0.01" /><i>%</i></span>
+            <span class="hint">Usually Prime + a margin, and <strong>variable</strong>. Ask for today's rate and the lifetime cap.</span>
+          </label>
+          <label>Draw period
+            <input type="number" id="drawYears" value="10" min="1" max="30" step="1" />
+            <span class="hint">Years you can keep pulling money back out. The sweep only works during this window.</span>
+          </label>
+          <label>Repayment period
+            <input type="number" id="repayYears" value="20" min="1" max="30" step="1" />
+            <span class="hint">After the draw period, whatever is left amortizes over these years — with no more draws.</span>
+          </label>
+          <label>Closing costs
+            <input type="number" id="closingCosts" value="3500" min="0" step="100" />
+            <span class="hint">Appraisal, title, origination. Ask for the full number in writing.</span>
+          </label>
+          <label>Annual fee
+            <input type="number" id="annualFee" value="75" min="0" step="25" />
+            <span class="hint">Many lines charge one every year they're open.</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="input-group">
+        <h2>3. Your monthly cash flow</h2>
+        <p class="group-note">This is what makes or breaks the strategy. Be honest here — the whole idea depends on money reliably piling up in the line.</p>
+        <div class="fields">
+          <label>Take-home pay deposited
+            <input type="number" id="netIncome" value="9000" min="0" step="100" />
+            <span class="hint">Household net pay per month, after taxes — everything that would land in the line.</span>
+          </label>
+          <label>Monthly spending
+            <input type="number" id="monthlyExpenses" value="4500" min="0" step="100" />
+            <span class="hint">Everything you spend <em>except</em> the mortgage payment: food, cars, utilities, insurance, childcare, fun.</span>
+          </label>
+          <label>How you're paid
+            <select id="payFrequency">
+              <option value="monthly">Once a month</option>
+              <option value="semimonthly" selected>Twice a month</option>
+            </select>
+            <span class="hint">Interest is daily, so money that arrives earlier in the month works slightly harder.</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="rollClosingCosts" checked />
+            <span>Roll closing costs into the line</span>
+            <span class="hint">Otherwise you pay them out of pocket at signing.</span>
+          </label>
+        </div>
+      </section>
+    </form>
+
+    <!-- ── Results ── -->
+    <section id="results" class="results">
+      <div id="verdict" class="verdict"></div>
+
+      <div id="warnings" class="warnings"></div>
+
+      <h2 class="results-h">Three ways to handle the same money</h2>
+      <div class="scenario-cards">
+        <div class="scenario" id="cardMortgage">
+          <div class="scenario-title">Keep the mortgage</div>
+          <div class="scenario-sub">Pay only what's due</div>
+          <dl>
+            <div><dt>Paid off in</dt><dd class="big" data-field="term">—</dd></div>
+            <div><dt>Total interest</dt><dd data-field="interest">—</dd></div>
+            <div><dt>Monthly payment</dt><dd data-field="payment">—</dd></div>
+          </dl>
+        </div>
+        <div class="scenario highlight-fair" id="cardExtra">
+          <div class="scenario-title">Keep the mortgage <span class="tag">fair comparison</span></div>
+          <div class="scenario-sub">And send the surplus to principal</div>
+          <dl>
+            <div><dt>Paid off in</dt><dd class="big" data-field="term">—</dd></div>
+            <div><dt>Total interest</dt><dd data-field="interest">—</dd></div>
+            <div><dt>Payment + extra</dt><dd data-field="payment">—</dd></div>
+          </dl>
+        </div>
+        <div class="scenario" id="cardHeloc">
+          <div class="scenario-title">1st lien HELOC</div>
+          <div class="scenario-sub">Sweep every paycheck</div>
+          <dl>
+            <div><dt>Paid off in</dt><dd class="big" data-field="term">—</dd></div>
+            <div><dt>Total cost</dt><dd data-field="interest">—</dd></div>
+            <div><dt>Net into the line</dt><dd data-field="payment">—</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <div class="attribution" id="attribution"></div>
+
+      <h2 class="results-h">Balance over time</h2>
+      <div class="chart-wrap">
+        <div id="chart" class="chart"></div>
+        <div class="legend">
+          <span><i class="swatch s-mortgage"></i>Mortgage, minimum payment</span>
+          <span><i class="swatch s-extra"></i>Mortgage + surplus to principal</span>
+          <span><i class="swatch s-heloc"></i>1st lien HELOC</span>
+        </div>
+      </div>
+
+      <h2 class="results-h">The rate is variable — what if it rises?</h2>
+      <p class="section-note">Your mortgage rate is locked. A HELOC rate isn't, and it can move for the entire life of the loan. The fair-comparison column shows whether the HELOC still wins after a rate move.</p>
+      <div class="table-wrap">
+        <table class="stress-table">
+          <thead>
+            <tr><th>HELOC rate</th><th>Paid off in</th><th>Total cost</th><th>vs. mortgage + surplus</th></tr>
+          </thead>
+          <tbody id="stressBody"></tbody>
+        </table>
+      </div>
+      <div class="breakeven" id="breakeven"></div>
+
+      <details class="detail-table">
+        <summary>Month-by-month detail — first 5 years of the sweep</summary>
+        <div class="table-wrap">
+          <table class="amort-table">
+            <thead>
+              <tr><th>Mo.</th><th>Opening</th><th>Deposits</th><th>Draws</th><th>Interest</th><th>Closing</th></tr>
+            </thead>
+            <tbody id="amortBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <!-- ── Guidance ── -->
+    <section class="guidance">
+      <h2>Before you sign anything, ask the lender</h2>
+      <ul>
+        <li><strong>What index and margin set my rate, and what's the lifetime cap?</strong> "Prime + 1.5%, capped at 18%" tells you the worst case. Run that worst case above.</li>
+        <li><strong>How is interest calculated?</strong> True average daily balance is the point of the product. If it's charged monthly on a period-end balance, the sweep advantage largely evaporates.</li>
+        <li><strong>Can the lender freeze or reduce the line?</strong> Lines were frozen at scale in 2008. If your line is frozen, the money you swept in is no longer available to live on.</li>
+        <li><strong>What exactly happens when the draw period ends?</strong> Get the required payment on the balance you'd realistically still owe.</li>
+        <li><strong>What are all the fees?</strong> Closing costs, annual fee, early-closure fee, transaction or draw fees.</li>
+      </ul>
+      <h2>Who this tends to fit</h2>
+      <p>
+        The strategy rewards a household with <strong>steady income well above its spending</strong>, solid cash
+        reserves, discipline about not treating home equity as spending money, and enough equity that the line
+        comfortably covers the mortgage. If your surplus is thin or your income is lumpy, a variable rate against
+        your house is a heavy bet — and the same surplus sent to your existing mortgage captures most of the benefit
+        with none of the risk.
+      </p>
+      <p class="disclaimer">
+        Estimates only, for comparing scenarios. Real results depend on your actual rate movements, spending, and
+        loan terms. This isn't financial advice — check the numbers against any offer you receive.
+      </p>
+    </section>
+  </main>
+
+  <script src="/static/js/heloc-calc.js"></script>
+  <script src="/static/js/heloc.js"></script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+/* ── 1st Lien HELOC calculator ── */
+
+.heloc-page {
+  --ink: #1f2d3d;
+  --muted: #5b6b7c;
+  --line: #e2e6ea;
+  --good: #1e8449;
+  --bad: #c0392b;
+  --amber: #b9770e;
+  --mortgage: #7f8c8d;
+  --extra: #2980b9;
+  --heloc: #16a085;
+  font-size: 17px;
+}
+
+.heloc-page main { max-width: 1040px; }
+.heloc-page header h1 { margin-bottom: 8px; }
+
+.subhead {
+  max-width: 640px;
+  margin: 0 auto;
+  font-size: 1rem;
+  opacity: .88;
+  line-height: 1.5;
+}
+
+/* ── Explainer ── */
+.explainer {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px 26px;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.explainer h2, .input-group h2, .results-h, .guidance h2 {
+  font-size: 1.25rem;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.explainer p { margin-bottom: 12px; color: var(--muted); }
+
+.steps { margin: 0 0 14px 20px; color: var(--muted); }
+.steps li { margin-bottom: 10px; padding-left: 4px; }
+
+.callout {
+  background: #fdf6e3;
+  border-left: 4px solid var(--amber);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 0 !important;
+  color: #6b5b2a !important;
+}
+
+/* ── Inputs ── */
+.input-group {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 26px;
+  margin-bottom: 20px;
+}
+
+.group-note {
+  color: var(--muted);
+  font-size: .95rem;
+  margin: -4px 0 16px;
+  line-height: 1.5;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px 22px;
+}
+
+.fields label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--ink);
+}
+
+.fields input[type="number"], .fields select {
+  margin-top: 6px;
+  padding: 10px 12px;
+  font-size: 1.05rem;
+  font-family: var(--font);
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  width: 100%;
+}
+
+.fields input:focus, .fields select:focus {
+  outline: none;
+  border-color: var(--extra);
+}
+
+.input-suffix { position: relative; display: block; }
+.input-suffix i {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-40%);
+  font-style: normal;
+  color: var(--muted);
+  pointer-events: none;
+}
+.input-suffix input { padding-right: 30px !important; }
+
+.hint {
+  margin-top: 6px;
+  font-weight: 400;
+  font-size: .82rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.optional { font-weight: 400; color: var(--muted); font-size: .85rem; }
+
+.checkbox-label {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  padding-bottom: 4px;
+}
+.checkbox-label input { width: 20px; height: 20px; accent-color: var(--extra); }
+.checkbox-label .hint { flex-basis: 100%; margin-top: 2px; }
+
+/* ── Verdict ── */
+.verdict {
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 18px;
+  line-height: 1.55;
+  border-left: 6px solid;
+}
+.verdict-head { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }
+.verdict p { font-size: .95rem; }
+.verdict.good { background: #e8f6ef; border-color: var(--good); color: #16603a; }
+.verdict.mixed { background: #fdf6e3; border-color: var(--amber); color: #6b5b2a; }
+.verdict.bad { background: #fdecea; border-color: var(--bad); color: #922b21; }
+.verdict.neutral { background: #f4f6f7; border-color: var(--mortgage); color: var(--muted); }
+
+/* ── Warnings ── */
+.warnings { margin-bottom: 22px; }
+.warn-item {
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  font-size: .93rem;
+  line-height: 1.5;
+  border-left: 4px solid;
+}
+.warn-item.danger { background: #fdecea; border-color: var(--bad); color: #922b21; }
+.warn-item.warn { background: #fef5e7; border-color: var(--amber); color: #6b5b2a; }
+.warn-item.info { background: #eaf2f8; border-color: var(--extra); color: #1b4f72; }
+
+/* ── Scenario cards ── */
+.results-h { margin: 30px 0 14px; }
+
+.scenario-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.scenario {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  border-top: 5px solid var(--mortgage);
+}
+#cardExtra { border-top-color: var(--extra); }
+#cardHeloc { border-top-color: var(--heloc); }
+
+.scenario-title { font-weight: 700; font-size: 1.05rem; color: var(--ink); }
+.scenario-sub { font-size: .85rem; color: var(--muted); margin-bottom: 14px; }
+
+.tag {
+  display: inline-block;
+  background: var(--extra);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.scenario dl > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+.scenario dt { color: var(--muted); font-size: .88rem; }
+.scenario dd { font-weight: 700; color: var(--ink); }
+.scenario dd.big { font-size: 1.25rem; }
+
+/* ── Savings attribution ── */
+.attribution {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
+  margin-top: 18px;
+}
+.attribution h3 { font-size: 1.05rem; color: var(--ink); margin-bottom: 12px; }
+
+.attr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.attr-label { font-weight: 600; color: var(--ink); font-size: .95rem; }
+.attr-note-inline {
+  display: block;
+  font-weight: 400;
+  font-size: .82rem;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.45;
+}
+.attr-amount { font-size: 1.2rem; font-weight: 700; white-space: nowrap; }
+.attr-note {
+  margin-top: 14px;
+  font-size: .88rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.pos { color: var(--good); }
+.neg { color: var(--bad); }
+
+/* ── Chart ── */
+.chart-wrap {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { font-size: 12px; fill: var(--muted); font-family: var(--font); }
+.chart .line { fill: none; stroke-width: 2.5; stroke-linejoin: round; }
+.chart .s-mortgage { stroke: var(--mortgage); }
+.chart .s-extra { stroke: var(--extra); }
+.chart .s-heloc { stroke: var(--heloc); }
+.chart .draw-line { stroke: #b0b7bd; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.chart .draw-label { font-size: 11px; fill: #93a0ab; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 12px;
+  font-size: .85rem;
+  color: var(--muted);
+}
+.legend span { display: flex; align-items: center; gap: 7px; }
+.swatch { width: 16px; height: 4px; border-radius: 2px; display: inline-block; }
+.swatch.s-mortgage { background: var(--mortgage); }
+.swatch.s-extra { background: var(--extra); }
+.swatch.s-heloc { background: var(--heloc); }
+
+/* ── Tables ── */
+.section-note {
+  color: var(--muted);
+  font-size: .93rem;
+  line-height: 1.55;
+  margin: -6px 0 14px;
+}
+
+.table-wrap {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+
+.stress-table, .amort-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .92rem;
+  min-width: 480px;
+}
+
+.stress-table th, .amort-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f7f9fa;
+  color: var(--muted);
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  border-bottom: 2px solid var(--line);
+}
+
+.stress-table td, .amort-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.stress-table tr.current td { background: #f4fbf9; font-weight: 600; }
+.stress-table .bump { color: var(--muted); font-weight: 400; font-size: .82rem; }
+.amort-table tr.repay td { background: #fef9f0; }
+.amort-table td { font-variant-numeric: tabular-nums; }
+
+.breakeven {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: .93rem;
+  line-height: 1.55;
+  border-left: 4px solid;
+}
+.breakeven.pos { background: #e8f6ef; border-color: var(--good); color: #16603a; }
+.breakeven.neg { background: #fdecea; border-color: var(--bad); color: #922b21; }
+
+.detail-table { margin-top: 26px; }
+.detail-table summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--extra);
+  padding: 10px 0;
+  font-size: .95rem;
+}
+
+/* ── Guidance ── */
+.guidance {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px 26px;
+  margin-top: 30px;
+  line-height: 1.6;
+}
+.guidance h2 { margin-top: 20px; }
+.guidance h2:first-child { margin-top: 0; }
+.guidance ul { margin-left: 20px; color: var(--muted); }
+.guidance li { margin-bottom: 10px; }
+.guidance p { color: var(--muted); margin-bottom: 10px; }
+
+.disclaimer {
+  font-size: .84rem !important;
+  color: #8a97a3 !important;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 18px;
+}
+
+@media (max-width: 640px) {
+  .heloc-page { font-size: 16px; }
+  .heloc-page header h1 { font-size: 1.5rem; }
+  .explainer, .input-group, .guidance { padding: 18px 16px; }
+  .attr-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
