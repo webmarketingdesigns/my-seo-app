@@ -174,18 +174,185 @@
     };
   }
 
-  /** Normalize one debt row from the form. */
-  function normalizeDebt(raw, index) {
+  function daysInMonth(year, monthIndex) {
+    return new Date(year, monthIndex + 1, 0).getDate();
+  }
+
+  /**
+   * SWEEP MODE — the all-in-one / 1st-lien style arrangement.
+   *
+   * Every paycheck is deposited straight into the equity line, which drops the
+   * balance that day. Everything the household spends — the mortgage, the
+   * itemized bills, general spending, and the minimums on any debt that was
+   * not consolidated — is drawn back out across the month. Interest is charged
+   * on the AVERAGE DAILY BALANCE, so idle cash cuts the interest bill for
+   * every day it sits in the line before it is spent.
+   *
+   * Against simply paying the same surplus monthly, the extra gain is the
+   * float alone. Modelling it separately is the point: it lets the float be
+   * measured rather than assumed.
+   */
+  function simulateSweep(input, draw, otherDebts, topUp) {
+    var h = input.heloc;
+    var c = input.cashflow;
+    var income = c.netIncome + Math.max(0, topUp || 0);
+    var dailyRate = h.rate / 100 / 365;
+    var drawMonths = Math.round(h.drawYears * 12);
+    var repayMonths = Math.round(h.repayYears * 12);
+    var depositDays = c.payFrequency === 'weekly' ? [1, 8, 15, 22]
+      : c.payFrequency === 'semimonthly' ? [1, 16] : [1];
+    var perDeposit = income / depositDays.length;
+
+    var billsTotal = input.bills.reduce(function (s, b) { return s + b.minimum; }, 0);
+    var fixedOutflow = c.mortgagePayment + billsTotal + c.livingExpenses;
+
+    var balance = draw.helocBalance;
+    var debts = otherDebts.map(function (d) {
+      return { balance: d.balance, apr: d.apr, minimum: d.minimum };
+    });
+
+    var outstanding = function () {
+      return debts.reduce(function (s, d) { return s + Math.max(0, d.balance); }, 0);
+    };
+
+    var startingTotal = balance + outstanding();
+    var totalInterest = 0, totalFees = 0;
+    var history = [startingTotal];
+    var month = 0, stalled = false;
+    var start = new Date();
+    var peak = balance;
+    var drawEndBalance = null;
+
+    while (month < MAX_MONTHS && month < drawMonths) {
+      if (balance <= 0.005 && outstanding() <= 0.005) { balance = Math.min(balance, 0); break; }
+      var cursor = new Date(start.getFullYear(), start.getMonth() + month, 1);
+      var days = daysInMonth(cursor.getFullYear(), cursor.getMonth());
+      month++;
+
+      // Debts left outside the line take their minimums, drawn from the line.
+      var debtPayments = 0;
+      debts.forEach(function (d) {
+        if (d.balance <= 0.005) return;
+        var interest = d.balance * (d.apr / 100 / 12);
+        d.balance += interest;
+        totalInterest += interest;
+        var pay = Math.min(d.minimum, d.balance);
+        d.balance -= pay;
+        debtPayments += pay;
+        if (d.balance <= 0.005) d.balance = 0;
+      });
+
+      var dailyOut = (fixedOutflow + debtPayments) / days;
+      var monthInterest = 0;
+
+      for (var day = 1; day <= days; day++) {
+        if (depositDays.indexOf(day) !== -1) balance -= perDeposit;
+        balance += dailyOut;
+        if (balance > 0) monthInterest += balance * dailyRate;
+      }
+
+      balance += monthInterest;
+      totalInterest += monthInterest;
+      if (h.annualFee > 0 && month % 12 === 0 && balance > 0) {
+        balance += h.annualFee;
+        totalFees += h.annualFee;
+      }
+
+      // "Chunking": once the line is clear, the cash piling up in it is drawn
+      // straight back out to kill the next-costliest debt. Without this the
+      // surplus would sit idle while high-rate balances crawled along on their
+      // minimums — which is not how anyone actually runs a sweep.
+      while (balance < -0.005 && outstanding() > 0.005) {
+        var target = debts
+          .filter(function (d) { return d.balance > 0.005; })
+          .sort(function (x, y) { return y.apr - x.apr; })[0];
+        if (!target) break;
+        var chunk = Math.min(-balance, target.balance);
+        target.balance -= chunk;
+        balance += chunk;
+        if (target.balance <= 0.005) target.balance = 0;
+      }
+
+      if (balance > peak) peak = balance;
+      history.push(Math.max(0, balance) + outstanding());
+
+      if (month === 12 && Math.max(0, balance) + outstanding() >= startingTotal - 0.005) {
+        stalled = true;
+        break;
+      }
+    }
+
+    // Draw period over: no more drawing. Whatever is left amortizes, paid out
+    // of whatever the household has spare each month.
+    if (!stalled && month >= drawMonths && (balance > 0.005 || outstanding() > 0.005)) {
+      drawEndBalance = balance;
+      var spare = income - fixedOutflow;
+      var required = monthlyPayment(balance, h.rate, repayMonths);
+      var tailAccounts = [{
+        id: 'heloc', name: 'Home equity line', balance: balance,
+        apr: h.rate, minimum: Math.max(required, 0), kind: 'debt',
+      }];
+      debts.forEach(function (d, i) {
+        if (d.balance > 0.005) {
+          tailAccounts.push({ id: 'rest' + i, name: 'Remaining debt', balance: d.balance, apr: d.apr, minimum: d.minimum, kind: 'debt' });
+        }
+      });
+      var tail = simulate(tailAccounts, {
+        budget: Math.max(spare, required), applyExtra: true,
+        helocDrawYears: 0, helocRepayYears: h.repayYears, helocAnnualFee: h.annualFee,
+      });
+      totalInterest += tail.totalInterest;
+      totalFees += tail.totalFees;
+      for (var k = 1; k < tail.history.length; k++) history.push(tail.history[k]);
+      month += tail.months;
+      if (!tail.paidOff) stalled = true;
+      balance = tail.paidOff ? 0 : balance;
+      if (tail.paidOff) debts.forEach(function (d) { d.balance = 0; });
+    }
+
+    var cleared = !stalled && balance <= 0.005 && outstanding() <= 0.005;
     return {
-      id: raw.id || ('d' + index),
-      name: (raw.name || 'Debt ' + (index + 1)).toString().slice(0, 60),
+      months: month,
+      paidOff: cleared && month < MAX_MONTHS,
+      stalled: stalled,
+      infeasible: income < fixedOutflow,
+      totalInterest: totalInterest,
+      totalFees: totalFees,
+      totalCost: totalInterest + totalFees,
+      startingTotal: startingTotal,
+      firstMonthOutlay: fixedOutflow,
+      peakBalance: peak,
+      drawEndBalance: drawEndBalance,
+      history: history,
+      accounts: [],
+    };
+  }
+
+  /**
+   * Normalize one row. A row is either a DEBT — a balance being paid down,
+   * which the payoff engine simulates — or a BILL: a steady monthly amount
+   * with no balance (utilities, insurance, storage), which is simply part of
+   * the cost of living and never gets "paid off".
+   *
+   * `minimum` carries the monthly amount for both, so a row can move between
+   * the two without any of its numbers being rewritten.
+   */
+  function normalizeRow(raw, index) {
+    var balance = Math.max(0, num(raw.balance));
+    // An explicit kind wins; otherwise a balance is what makes it a debt.
+    var kind = (raw.kind === 'bill' || raw.kind === 'debt')
+      ? raw.kind
+      : (balance > 0 ? 'debt' : 'bill');
+    return {
+      id: raw.id || ('r' + index),
+      name: (raw.name || '').toString().slice(0, 60),
       type: raw.type || 'other',
-      balance: Math.max(0, num(raw.balance)),
-      apr: Math.max(0, num(raw.apr)),
+      kind: kind,
+      balance: kind === 'bill' ? 0 : balance,
+      apr: kind === 'bill' ? 0 : Math.max(0, num(raw.apr)),
       minimum: Math.max(0, num(raw.minimum)),
       // null/undefined mean "decide by rate"; true/false is an explicit override
       include: raw.include == null ? null : !!raw.include,
-      kind: 'debt',
     };
   }
 
@@ -194,6 +361,8 @@
     var p = raw.property || {};
     var h = raw.heloc || {};
     var c = raw.cashflow || {};
+    // One list in, split by kind. `bills` may arrive as its own list too.
+    var rows = (raw.debts || []).concat(raw.bills || []).map(normalizeRow);
     return {
       property: {
         homeValue: Math.max(0, num(p.homeValue)),
@@ -210,10 +379,16 @@
       },
       cashflow: {
         netIncome: Math.max(0, num(c.netIncome)),
+        // Kept under its original key so existing saved plans keep working.
+        // It now means "spending not itemized as a bill below".
         livingExpenses: Math.max(0, num(c.livingExpenses)),
         mortgagePayment: Math.max(0, num(c.mortgagePayment)),
+        // How often pay lands matters: sweep interest is charged daily.
+        payFrequency: (c.payFrequency === 'weekly' || c.payFrequency === 'semimonthly')
+          ? c.payFrequency : 'monthly',
       },
-      debts: (raw.debts || []).map(normalizeDebt).filter(function (d) { return d.balance > 0; }),
+      debts: rows.filter(function (r) { return r.kind === 'debt' && r.balance > 0; }),
+      bills: rows.filter(function (r) { return r.kind === 'bill'; }),
     };
   }
 
@@ -300,6 +475,10 @@
     var usableEquity = Math.max(0,
       (input.property.homeValue * input.property.maxCltv / 100) - input.property.mortgageBalance);
 
+    var billsTotal = input.bills.reduce(function (s, b) { return s + b.minimum; }, 0);
+    var otherSpending = input.cashflow.livingExpenses;
+    var totalExpenses = billsTotal + otherSpending;
+
     var totalDebt = input.debts.reduce(function (s, d) { return s + d.balance; }, 0);
     var totalMinimums = input.debts.reduce(function (s, d) { return s + d.minimum; }, 0);
     var weightedApr = totalDebt > 0
@@ -308,12 +487,29 @@
 
     // Everything available for debt service once the roof and the groceries
     // are paid for.
-    var debtBudget = input.cashflow.netIncome - input.cashflow.livingExpenses - input.cashflow.mortgagePayment;
+    var debtBudget = input.cashflow.netIncome - totalExpenses - input.cashflow.mortgagePayment;
     var surplus = debtBudget - totalMinimums;
+
+    // When the minimums exceed what the budget leaves, EVERY plan needs the
+    // same top-up to be achievable. Applying it uniformly keeps the scenarios
+    // comparable; the shortfall is reported separately so it cannot hide.
+    // Only ever bridges the gap between a workable budget and the minimums.
+    // If the budget is already negative — income short of the mortgage and
+    // living costs — there is nothing to bridge, and inventing income would
+    // hide the actual problem.
+    var requiredTopUp = debtBudget < 0 ? 0 : Math.max(0, totalMinimums - debtBudget);
+    var planBudget = debtBudget + requiredTopUp;
 
     var draw = buildDraw(input, usableEquity);
     var before = currentAccounts(input);
     var after = consolidatedAccounts(input, draw);
+
+    // Cash flow: what leaves the account every month, before and after.
+    var helocInterestOnly = draw.helocBalance * (h.rate / 100 / 12);
+    var survivingMinimums = after
+      .filter(function (a) { return a.kind === 'debt'; })
+      .reduce(function (s, a) { return s + a.minimum; }, 0);
+    var afterMinimums = survivingMinimums + helocInterestOnly;
 
     var simOpts = {
       helocDrawYears: h.drawYears,
@@ -327,18 +523,13 @@
 
     var scenarios = {
       minimums: simulate(before, Object.assign({ budget: totalMinimums, applyExtra: false }, simOpts)),
-      avalanche: simulate(before, Object.assign({ budget: Math.max(debtBudget, totalMinimums), applyExtra: true }, simOpts)),
-      coast: withCosts(simulate(after, Object.assign({ budget: debtBudget, applyExtra: false }, simOpts))),
-      attack: withCosts(simulate(after, Object.assign({ budget: Math.max(debtBudget, 0), applyExtra: true }, simOpts))),
+      avalanche: simulate(before, Object.assign({ budget: planBudget, applyExtra: true }, simOpts)),
+      coast: withCosts(simulate(after, Object.assign({ budget: afterMinimums, applyExtra: false }, simOpts))),
+      attack: withCosts(simulate(after, Object.assign({ budget: planBudget, applyExtra: true }, simOpts))),
+      sweep: withCosts(simulateSweep(input, draw, after.filter(function (a) { return a.kind === 'debt'; }), requiredTopUp)),
     };
 
     // Cash flow: what leaves the account every month, before and after.
-    var helocInterestOnly = draw.helocBalance * (h.rate / 100 / 12);
-    var survivingMinimums = after
-      .filter(function (a) { return a.kind === 'debt'; })
-      .reduce(function (s, a) { return s + a.minimum; }, 0);
-    var afterMinimums = survivingMinimums + helocInterestOnly;
-
     var cashflow = {
       debtBudget: debtBudget,
       surplus: surplus,
@@ -351,6 +542,11 @@
       shortfall: Math.max(0, totalMinimums - debtBudget),
       // And can it cover them after consolidating?
       canMeetAfter: debtBudget >= afterMinimums - 0.005,
+      billsTotal: billsTotal,
+      otherSpending: otherSpending,
+      totalExpenses: totalExpenses,
+      requiredTopUp: requiredTopUp,
+      planBudget: planBudget,
     };
 
     var comparison = {
@@ -363,6 +559,12 @@
       // What discipline alone is worth, with the line already in place.
       costOfCoasting: scenarios.coast.totalCost - scenarios.attack.totalCost,
       monthsOfCoasting: scenarios.coast.months - scenarios.attack.months,
+      // What the SWEEP itself adds, over paying the same money monthly. This
+      // is the float, isolated — usually small, and the honest way to judge
+      // whether routing every paycheck through the line is worth the hassle.
+      sweepGainVsAttack: scenarios.attack.totalCost - scenarios.sweep.totalCost,
+      sweepMonthsVsAttack: scenarios.attack.months - scenarios.sweep.months,
+      sweepGainVsAvalanche: scenarios.avalanche.totalCost - scenarios.sweep.totalCost,
     };
 
     return {
@@ -386,6 +588,13 @@
       },
       draw: draw,
       cashflow: cashflow,
+      expenses: {
+        bills: billsTotal,
+        other: otherSpending,
+        total: totalExpenses,
+        billCount: input.bills.length,
+        mortgage: input.cashflow.mortgagePayment,
+      },
       scenarios: scenarios,
       comparison: comparison,
       warnings: buildWarnings(input, usableEquity, draw, cashflow, scenarios),
@@ -492,6 +701,31 @@
       });
     }
 
+    if (cashflow.billsTotal > 0 && input.cashflow.livingExpenses > 0) {
+      w.push({
+        level: 'info', key: 'doublecount',
+        text: 'Check that the ' + money(cashflow.billsTotal) + ' of bills listed below is not also sitting ' +
+          'inside your "everything else" figure. Counted twice, your budget looks tighter than it is.',
+      });
+    }
+
+    if (draw.helocBalance > 0 && scenarios.sweep.infeasible) {
+      w.push({
+        level: 'danger', key: 'sweepnegative',
+        text: 'Sweep mode cannot work here: your monthly outgoings are more than your take-home pay, ' +
+          'so routing everything through the line makes the balance grow rather than shrink.',
+      });
+    }
+
+    if (draw.helocBalance > 0 && scenarios.sweep.drawEndBalance > 0) {
+      w.push({
+        level: 'warn', key: 'sweepdrawend',
+        text: 'Sweeping does not clear the line before the ' + input.heloc.drawYears +
+          '-year draw period ends. After that you cannot draw from it any more, so the account stops ' +
+          'working as your checking account and the balance has to be amortized.',
+      });
+    }
+
     if (draw.helocBalance > 0) {
       w.push({
         level: 'info', key: 'variable',
@@ -508,6 +742,7 @@
     calculate: calculate,
     normalize: normalize,
     simulate: simulate,
+    simulateSweep: simulateSweep,
     buildDraw: buildDraw,
     monthlyPayment: monthlyPayment,
     MAX_MONTHS: MAX_MONTHS,
