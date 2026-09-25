@@ -174,6 +174,13 @@
     };
   }
 
+  var FREQ_MONTHS = { monthly: 1, quarterly: 3, semiannual: 6, annual: 12 };
+
+  /** A cost billed on any cycle, expressed per month. */
+  function perMonth(amount, frequency) {
+    return num(amount) / (FREQ_MONTHS[frequency] || 1);
+  }
+
   function daysInMonth(year, monthIndex) {
     return new Date(year, monthIndex + 1, 0).getDate();
   }
@@ -195,16 +202,25 @@
   function simulateSweep(input, draw, otherDebts, topUp) {
     var h = input.heloc;
     var c = input.cashflow;
-    var income = c.netIncome + Math.max(0, topUp || 0);
+    // The paycheck arrives on its own cycle; other income (Social Security, a
+    // pension) is treated as landing at the start of the month.
+    var otherIncome = input.income.reduce(function (s, r) { return s + perMonth(r.amount, r.frequency); }, 0);
+    var income = c.netIncome + otherIncome + Math.max(0, topUp || 0);
     var dailyRate = h.rate / 100 / 365;
     var drawMonths = Math.round(h.drawYears * 12);
     var repayMonths = Math.round(h.repayYears * 12);
     var depositDays = c.payFrequency === 'weekly' ? [1, 8, 15, 22]
       : c.payFrequency === 'semimonthly' ? [1, 16] : [1];
-    var perDeposit = income / depositDays.length;
+    // Only the paycheck is split across paydays; the rest lands on the 1st.
+    var paycheckPart = c.netIncome + Math.max(0, topUp || 0);
+    var perDeposit = paycheckPart / depositDays.length;
+    var firstOfMonthDeposit = otherIncome;
 
     var billsTotal = input.bills.reduce(function (s, b) { return s + b.minimum; }, 0);
-    var fixedOutflow = c.mortgagePayment + billsTotal + c.livingExpenses;
+    var taxesMonthly = c.escrowed ? 0 : perMonth(c.propertyTaxes, c.taxesFrequency);
+    var insuranceMonthly = c.escrowed ? 0 : perMonth(c.insurance, c.insuranceFrequency);
+    var fixedOutflow = c.mortgagePayment + billsTotal + c.livingExpenses
+      + taxesMonthly + insuranceMonthly;
 
     var balance = draw.helocBalance;
     var debts = otherDebts.map(function (d) {
@@ -246,6 +262,7 @@
       var monthInterest = 0;
 
       for (var day = 1; day <= days; day++) {
+        if (day === 1) balance -= firstOfMonthDeposit;
         if (depositDays.indexOf(day) !== -1) balance -= perDeposit;
         balance += dailyOut;
         if (balance > 0) monthInterest += balance * dailyRate;
@@ -363,6 +380,17 @@
     var c = raw.cashflow || {};
     // One list in, split by kind. `bills` may arrive as its own list too.
     var rows = (raw.debts || []).concat(raw.bills || []).map(normalizeRow);
+    // Income beyond the main paycheck: Social Security, a pension, rent,
+    // side work. Each on its own cycle.
+    var income = (raw.income || []).map(function (r, i) {
+      return {
+        id: r.id || ('i' + i),
+        name: (r.name || '').toString().slice(0, 60),
+        type: r.type || 'other',
+        amount: Math.max(0, num(r.amount)),
+        frequency: FREQ_MONTHS[r.frequency] ? r.frequency : 'monthly',
+      };
+    });
     return {
       property: {
         homeValue: Math.max(0, num(p.homeValue)),
@@ -383,13 +411,31 @@
         // It now means "spending not itemized as a bill below".
         livingExpenses: Math.max(0, num(c.livingExpenses)),
         mortgagePayment: Math.max(0, num(c.mortgagePayment)),
+        // Property taxes and insurance. Escrowed, they are already inside the
+        // mortgage payment; paid separately they are their own outgoing, and
+        // are usually billed annually or twice a year rather than monthly.
+        // Existing saved plans default to escrowed, which leaves their numbers
+        // exactly as they were.
+        escrowed: c.escrowed === false ? false : true,
+        propertyTaxes: Math.max(0, num(c.propertyTaxes)),
+        taxesFrequency: FREQ_MONTHS[c.taxesFrequency] ? c.taxesFrequency : 'annual',
+        insurance: Math.max(0, num(c.insurance)),
+        insuranceFrequency: FREQ_MONTHS[c.insuranceFrequency] ? c.insuranceFrequency : 'annual',
         // How often pay lands matters: sweep interest is charged daily.
         payFrequency: (c.payFrequency === 'weekly' || c.payFrequency === 'semimonthly')
           ? c.payFrequency : 'monthly',
       },
       debts: rows.filter(function (r) { return r.kind === 'debt' && r.balance > 0; }),
       bills: rows.filter(function (r) { return r.kind === 'bill'; }),
+      income: income,
     };
+  }
+
+  /** Everything landing in the account each month, from every source. */
+  function totalMonthlyIncome(input) {
+    return input.cashflow.netIncome + input.income.reduce(function (s, r) {
+      return s + perMonth(r.amount, r.frequency);
+    }, 0);
   }
 
   /**
@@ -475,9 +521,14 @@
     var usableEquity = Math.max(0,
       (input.property.homeValue * input.property.maxCltv / 100) - input.property.mortgageBalance);
 
+    var cf = input.cashflow;
     var billsTotal = input.bills.reduce(function (s, b) { return s + b.minimum; }, 0);
-    var otherSpending = input.cashflow.livingExpenses;
-    var totalExpenses = billsTotal + otherSpending;
+    var otherSpending = cf.livingExpenses;
+    // Escrowed taxes and insurance are already inside the mortgage payment;
+    // counting them again would invent an expense that is not there.
+    var taxesMonthly = cf.escrowed ? 0 : perMonth(cf.propertyTaxes, cf.taxesFrequency);
+    var insuranceMonthly = cf.escrowed ? 0 : perMonth(cf.insurance, cf.insuranceFrequency);
+    var totalExpenses = billsTotal + otherSpending + taxesMonthly + insuranceMonthly;
 
     var totalDebt = input.debts.reduce(function (s, d) { return s + d.balance; }, 0);
     var totalMinimums = input.debts.reduce(function (s, d) { return s + d.minimum; }, 0);
@@ -487,7 +538,9 @@
 
     // Everything available for debt service once the roof and the groceries
     // are paid for.
-    var debtBudget = input.cashflow.netIncome - totalExpenses - input.cashflow.mortgagePayment;
+    var otherIncome = input.income.reduce(function (s, r) { return s + perMonth(r.amount, r.frequency); }, 0);
+    var grossMonthlyIn = cf.netIncome + otherIncome;
+    var debtBudget = grossMonthlyIn - totalExpenses - cf.mortgagePayment;
     var surplus = debtBudget - totalMinimums;
 
     // When the minimums exceed what the budget leaves, EVERY plan needs the
@@ -588,12 +641,23 @@
       },
       draw: draw,
       cashflow: cashflow,
+      income: {
+        paycheck: cf.netIncome,
+        other: otherIncome,
+        total: grossMonthlyIn,
+        sources: input.income,
+        count: input.income.length,
+      },
       expenses: {
         bills: billsTotal,
         other: otherSpending,
+        taxes: taxesMonthly,
+        insurance: insuranceMonthly,
+        escrowed: cf.escrowed,
         total: totalExpenses,
         billCount: input.bills.length,
-        mortgage: input.cashflow.mortgagePayment,
+        mortgage: cf.mortgagePayment,
+        housingTotal: cf.mortgagePayment + taxesMonthly + insuranceMonthly,
       },
       scenarios: scenarios,
       comparison: comparison,
@@ -606,7 +670,7 @@
     var w = [];
     var h = input.heloc;
 
-    if (!input.debts.length || input.cashflow.netIncome <= 0) {
+    if (!input.debts.length || totalMonthlyIncome(input) <= 0) {
       w.push({ level: 'info', key: 'setup', text: 'Add your debts and your take-home pay to see a real plan.' });
       return w;
     }
@@ -701,6 +765,14 @@
       });
     }
 
+    if (!input.cashflow.escrowed && input.cashflow.propertyTaxes <= 0 && input.cashflow.insurance <= 0) {
+      w.push({
+        level: 'warn', key: 'notaxes',
+        text: 'You have said taxes and insurance are not escrowed, but not entered them. Those bills are ' +
+          'real money — leaving them out makes every plan below look more affordable than it is.',
+      });
+    }
+
     if (cashflow.billsTotal > 0 && input.cashflow.livingExpenses > 0) {
       w.push({
         level: 'info', key: 'doublecount',
@@ -741,6 +813,8 @@
   var api = {
     calculate: calculate,
     normalize: normalize,
+    perMonth: perMonth,
+    totalMonthlyIncome: totalMonthlyIncome,
     simulate: simulate,
     simulateSweep: simulateSweep,
     buildDraw: buildDraw,

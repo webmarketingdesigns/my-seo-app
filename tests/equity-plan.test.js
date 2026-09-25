@@ -255,3 +255,89 @@ test('itemized bills alongside a lump expense figure raise a double-count note',
   const r = EP.calculate(WITH_BILLS);
   assert.ok(r.warnings.some((w) => w.key === 'doublecount'));
 });
+
+/* ── Taxes, insurance and extra income ── */
+
+test('a cost is converted to a monthly figure from any billing cycle', () => {
+  assert.strictEqual(EP.perMonth(6000, 'annual'), 500);
+  assert.strictEqual(EP.perMonth(1500, 'quarterly'), 500);
+  assert.strictEqual(EP.perMonth(3000, 'semiannual'), 500);
+  assert.strictEqual(EP.perMonth(500, 'monthly'), 500);
+  assert.strictEqual(EP.perMonth(500, undefined), 500, 'an unknown cycle is treated as monthly');
+});
+
+test('escrowed taxes and insurance are not counted twice', () => {
+  const input = clone(BASE);
+  input.cashflow.propertyTaxes = 6000;
+  input.cashflow.insurance = 2400;
+  input.cashflow.escrowed = true; // already inside the mortgage payment
+  const r = EP.calculate(input);
+  assert.strictEqual(r.expenses.taxes, 0);
+  assert.strictEqual(r.expenses.insurance, 0);
+  assert.strictEqual(r.cashflow.debtBudget, EP.calculate(BASE).cashflow.debtBudget);
+});
+
+test('taxes and insurance paid separately come out of the budget', () => {
+  const input = clone(BASE);
+  input.cashflow.escrowed = false;
+  input.cashflow.propertyTaxes = 6000; input.cashflow.taxesFrequency = 'annual';
+  input.cashflow.insurance = 2400; input.cashflow.insuranceFrequency = 'annual';
+  const r = EP.calculate(input);
+  assert.strictEqual(r.expenses.taxes, 500);
+  assert.strictEqual(r.expenses.insurance, 200);
+  assert.strictEqual(r.expenses.housingTotal, r.expenses.mortgage + 700);
+  assert.strictEqual(r.cashflow.debtBudget, EP.calculate(BASE).cashflow.debtBudget - 700);
+});
+
+test('an existing plan with no escrow setting keeps its old numbers', () => {
+  // Saved plans predate these fields; defaulting to escrowed changes nothing.
+  const r = EP.calculate(BASE);
+  assert.strictEqual(r.expenses.escrowed, true);
+  assert.strictEqual(r.expenses.taxes, 0);
+});
+
+test('saying taxes are not escrowed but leaving them blank is flagged', () => {
+  const input = clone(BASE);
+  input.cashflow.escrowed = false;
+  const r = EP.calculate(input);
+  assert.ok(r.warnings.some((w) => w.key === 'notaxes'));
+});
+
+test('extra income sources are added to what is available each month', () => {
+  const input = clone(BASE);
+  input.income = [
+    { id: 'i1', name: 'Social Security', type: 'social-security', amount: 2100, frequency: 'monthly' },
+    { id: 'i2', name: 'Bonus', type: 'other', amount: 6000, frequency: 'annual' },
+  ];
+  const r = EP.calculate(input);
+  assert.strictEqual(r.income.paycheck, BASE.cashflow.netIncome);
+  assert.strictEqual(r.income.other, 2600); // 2100 + 6000/12
+  assert.strictEqual(r.income.total, BASE.cashflow.netIncome + 2600);
+  assert.strictEqual(r.cashflow.debtBudget, EP.calculate(BASE).cashflow.debtBudget + 2600);
+});
+
+test('a plan with no income list behaves exactly as before', () => {
+  const withEmpty = EP.calculate({ ...clone(BASE), income: [] });
+  const without = EP.calculate(BASE);
+  assert.strictEqual(withEmpty.cashflow.debtBudget, without.cashflow.debtBudget);
+  assert.strictEqual(withEmpty.income.count, 0);
+});
+
+test('extra income reaches the sweep as well as the monthly plans', () => {
+  const input = clone(WITH_BILLS);
+  const before = EP.calculate(input).scenarios.sweep;
+  input.income = [{ id: 'i1', name: 'Social Security', type: 'social-security', amount: 1500, frequency: 'monthly' }];
+  const after = EP.calculate(input).scenarios.sweep;
+  assert.ok(after.months < before.months, 'more coming in clears the line sooner');
+  assert.ok(after.totalCost < before.totalCost);
+});
+
+test('income alone, with no paycheck, still drives a plan', () => {
+  const input = clone(BASE);
+  input.cashflow.netIncome = 0;
+  input.income = [{ id: 'i1', name: 'Pension', type: 'pension', amount: 9000, frequency: 'monthly' }];
+  const r = EP.calculate(input);
+  assert.strictEqual(r.income.total, 9000);
+  assert.ok(!r.warnings.some((w) => w.key === 'setup'), 'not treated as an empty plan');
+  assert.ok(r.scenarios.attack.paidOff);
+});
